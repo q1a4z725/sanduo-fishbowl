@@ -2,13 +2,19 @@
 <html lang="zh-TW">
 <head>
   <meta charset="UTF-8">
-  <title>大魚缸 - 三多郵局教保中心</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>彩色畫魚室 - 三多郵局教保中心</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
-  <style> body { margin: 0; padding: 0; overflow: hidden; background: #001b33; } </style>
+  <style>
+    body { margin: 0; padding: 0; overflow: hidden; background: #ffffff; touch-action: none; }
+    #homeBtn { position: fixed; top: 10px; left: 10px; z-index: 1000; padding: 10px; background: #607d8b; color: white; border: none; border-radius: 5px; cursor: pointer; }
+  </style>
 </head>
 <body>
+  <button id="homeBtn" onclick="location.href='index.html'">🏠 回選單</button>
+
   <script>
     const firebaseConfig = {
       apiKey: "AIzaSyBQvX-H_SmO44BVecOOEjghfBrlycbvh4s",
@@ -22,53 +28,118 @@
     firebase.initializeApp(firebaseConfig);
     const fishRef = firebase.database().ref('fishes');
 
-    let allFishes = [];
-    let fishPositions = [];
+    let allStrokes = []; 
+    let currentStroke = [];
+    // 統一使用小寫 hex code 避免判斷錯誤
+    let colors = ['#0066cc', '#ff4444', '#ffbb00', '#44bb44', '#9933cc', '#333333'];
+    let selectedIndex = 0; // 改用「索引值」來判斷選中哪一個，最準確
+    let isDrawing = false;
 
     function setup() {
       createCanvas(windowWidth, windowHeight);
-      fishRef.limitToLast(30).on('child_added', (snapshot) => {
-        let data = snapshot.val();
-        // 舊資料相容處理
-        if (data.path) { data.strokes = [{ points: data.path, color: data.color || '#fff' }]; }
-        allFishes.push(data);
-        fishPositions.push({ offX: 0, offY: 0, vx: random(-1.2, 1.2), vy: random(-0.5, 0.5) });
-      });
     }
 
     function draw() {
-      background(0, 27, 51);
-      for (let i = 0; i < allFishes.length; i++) {
-        let fish = allFishes[i];
-        let pos = fishPositions[i];
-        pos.offX += pos.vx;
-        pos.offY += pos.vy;
-
-        let firstStroke = fish.strokes[0];
-        let headX = firstStroke.points[0].x + pos.offX;
-        let headY = firstStroke.points[0].y + pos.offY;
-
-        if (headX < 0 || headX > width) pos.vx *= -1;
-        if (headY < 0 || headY > height) pos.vy *= -1;
-
-        push();
-        translate(pos.offX, pos.offY);
-        if (pos.vx < 0) { 
-          translate(firstStroke.points[0].x * 2, 0); 
-          scale(-1, 1); 
+      background(255);
+      
+      // 1. 畫出調色盤
+      noStroke();
+      for (let i = 0; i < colors.length; i++) {
+        fill(colors[i]);
+        let x = width / 2 - 125 + i * 50;
+        let y = 45;
+        ellipse(x, y, 40, 40);
+        
+        // 只有當索引值完全符合時，才畫出選中外框
+        if (selectedIndex === i) {
+          noFill();
+          stroke(80); // 灰黑色外圈
+          strokeWeight(3);
+          ellipse(x, y, 48, 48);
         }
+      }
 
-        for (let s of fish.strokes) {
-          stroke(s.color); strokeWeight(3); noFill();
-          beginShape();
-          for (let p of s.points) {
-            vertex(p.x, p.y); // 移除了 swing 計算，魚不會再扭動
-          }
-          endShape();
-        }
-        pop();
+      // 2. 畫出重畫與送出按鈕
+      noStroke();
+      fill(244, 67, 54); 
+      rect(width / 2 - 110, height - 65, 100, 45, 25);
+      fill(76, 175, 80); 
+      rect(width / 2 + 10, height - 65, 100, 45, 25);
+      
+      fill(255);
+      textAlign(CENTER, CENTER);
+      textSize(16);
+      text("全部重畫", width / 2 - 60, height - 42);
+      text("畫好送出", width / 2 + 60, height - 42);
+
+      // 3. 畫出筆劃
+      noFill();
+      for (let s of allStrokes) {
+        stroke(s.color);
+        strokeWeight(6);
+        beginShape();
+        for (let p of s.points) vertex(p.x, p.y);
+        endShape();
+      }
+
+      if (isDrawing) {
+        stroke(colors[selectedIndex]);
+        strokeWeight(6);
+        beginShape();
+        for (let p of currentStroke) vertex(p.x, p.y);
+        endShape();
       }
     }
+
+    function touchStarted() {
+      // 點擊調色盤偵測
+      for (let i = 0; i < colors.length; i++) {
+        let x = width / 2 - 125 + i * 50;
+        let d = dist(mouseX, mouseY, x, 45);
+        if (d < 25) {
+          selectedIndex = i; // 儲存選中的號碼
+          return false;
+        }
+      }
+
+      // 點擊按鈕偵測
+      if (mouseY > height - 70) {
+        if (mouseX > width/2 - 110 && mouseX < width/2 - 10) {
+          allStrokes = [];
+        } else if (mouseX > width/2 + 10 && mouseX < width/2 + 110) {
+          if (allStrokes.length > 0) {
+            fishRef.push({ strokes: allStrokes, timestamp: Date.now() });
+            allStrokes = [];
+            alert("魚兒游走囉！");
+          }
+        }
+        return false;
+      }
+
+      // 畫畫區域 (避開上下 UI)
+      if (mouseY > 90 && mouseY < height - 90) {
+        isDrawing = true;
+        currentStroke = [];
+      }
+      return false;
+    }
+
+    function touchMoved() {
+      if (isDrawing) {
+        currentStroke.push({x: mouseX, y: mouseY});
+      }
+      return false;
+    }
+
+    function touchEnded() {
+      if (isDrawing && currentStroke.length > 2) {
+        allStrokes.push({ points: currentStroke, color: colors[selectedIndex] });
+      }
+      isDrawing = false;
+      currentStroke = [];
+      return false;
+    }
+
     function windowResized() { resizeCanvas(windowWidth, windowHeight); }
   </script>
 </body>
