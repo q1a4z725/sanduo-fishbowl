@@ -2,18 +2,23 @@
 <html lang="zh-TW">
 <head>
   <meta charset="UTF-8">
-  <title>畫魚室 - 三多郵局教保中心</title>
+  <title>畫魚室(多筆劃版) - 三多郵局教保中心</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
   <style>
-    body { margin: 0; padding: 0; overflow: hidden; background: #f0f0f0; touch-action: none; }
-    #ui { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); text-align: center; }
-    button { padding: 15px 30px; font-size: 24px; background: #ff9800; color: white; border: none; border-radius: 50px; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
+    body { margin: 0; padding: 0; overflow: hidden; background: #ffffff; touch-action: none; }
+    #ui { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); display: flex; gap: 10px; }
+    button { padding: 15px 25px; font-size: 20px; border: none; border-radius: 50px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+    #sendBtn { background: #4CAF50; color: white; }
+    #clearBtn { background: #f44336; color: white; }
   </style>
 </head>
 <body>
-  <div id="ui"><button id="sendBtn">完成！把魚放進魚缸 ➔</button></div>
+  <div id="ui">
+    <button id="clearBtn">重畫 (擦掉)</button>
+    <button id="sendBtn">畫好了！放入魚缸 ➔</button>
+  </div>
   <script>
     const firebaseConfig = {
       apiKey: "AIzaSyBQvX-H_SmO44BVecOOEjghfBrlycbvh4s",
@@ -27,27 +32,54 @@
     firebase.initializeApp(firebaseConfig);
     const fishRef = firebase.database().ref('fishes');
 
-    let myPath = [];
+    let allStrokes = []; // 儲存所有的筆劃
+    let currentStroke = []; // 正在畫的那一筆
+
     function setup() { createCanvas(windowWidth, windowHeight); }
+
     function draw() {
       background(255);
       stroke(0, 100, 200);
       strokeWeight(5);
       noFill();
-      beginShape();
-      for (let p of myPath) vertex(p.x, p.y);
-      endShape();
+
+      // 1. 畫出已經畫好的所有筆劃
+      for (let strokePath of allStrokes) {
+        beginShape();
+        for (let p of strokePath) vertex(p.x, p.y);
+        endShape();
+      }
+
+      // 2. 畫出現在正在動的那一筆
+      if (mouseIsPressed) {
+        beginShape();
+        for (let p of currentStroke) vertex(p.x, p.y);
+        endShape();
+      }
     }
-    function mouseDragged() { myPath.push({x: mouseX, y: mouseY}); }
+
+    function mousePressed() { currentStroke = []; }
+    function mouseDragged() { currentStroke.push({x: mouseX, y: mouseY}); }
+    function mouseReleased() { if (currentStroke.length > 2) allStrokes.push(currentStroke); }
+
+    // 重畫按鈕
+    document.getElementById('clearBtn').onclick = () => { allStrokes = []; };
+
+    // 送出按鈕
     document.getElementById('sendBtn').onclick = function() {
-      if (myPath.length > 5) {
+      if (allStrokes.length > 0) {
+        // 將所有筆劃合併成一個大陣列送出
+        // 為了讓大魚缸能跑，我們把筆劃串接在一起
+        let combinedPath = [];
+        for(let s of allStrokes) { combinedPath = combinedPath.concat(s); }
+
         fishRef.push({
-          path: myPath,
+          path: combinedPath,
           color: `rgb(${floor(random(100,255))}, ${floor(random(50,150))}, ${floor(random(0,100))})`,
           timestamp: Date.now()
         });
-        myPath = [];
-        alert("魚兒游走囉！快去看大螢幕！");
+        allStrokes = [];
+        alert("這條魚游進大魚缸囉！");
       }
     };
   </script>
