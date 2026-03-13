@@ -9,13 +9,13 @@
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
   <style>
     body { margin: 0; padding: 0; overflow: hidden; background: #ffffff; touch-action: none; -webkit-user-select: none; }
-    #homeBtn { position: fixed; top: 10px; left: 10px; z-index: 1000; padding: 10px; background: #607d8b; color: white; border: none; border-radius: 5px; cursor: pointer; }
+    /* 這裡不再需要 fixed 的按鈕，我們全部畫在畫布上 */
   </style>
 </head>
 <body>
-  <button id="homeBtn" onclick="location.href='index.html'">🏠 回選單</button>
 
   <script>
+    // --- Firebase 配置 ---
     const firebaseConfig = {
       apiKey: "AIzaSyBQvX-H_SmO44BVecOOEjghfBrlycbvh4s",
       authDomain: "sanduo-fish.firebaseapp.com",
@@ -41,33 +41,49 @@
     function draw() {
       background(255);
       
-      // 1. 畫出調色盤 (修正外框殘留問題)
+      // 1. 畫出調色盤 (位於上方)
       for (let i = 0; i < colors.length; i++) {
         let x = width / 2 - 125 + i * 50;
         let y = 45;
-
-        noStroke(); // 每一圈開始前先強制關閉外框
+        noStroke();
         fill(colors[i]);
         ellipse(x, y, 40, 40);
-        
         if (selectedIndex === i) {
           noFill();
           stroke(80); 
           strokeWeight(3);
           ellipse(x, y, 48, 48);
-          noStroke(); // 畫完選中框立刻關閉，避免傳給下一圈
+          noStroke();
         }
       }
 
-      // 2. 畫出按鈕
+      // 2. 畫出三個功能按鈕 (位於下方)
       noStroke();
-      fill(244, 67, 54); rect(width / 2 - 110, height - 65, 100, 45, 25);
-      fill(76, 175, 80); rect(width / 2 + 10, height - 65, 100, 45, 25);
-      fill(255); textAlign(CENTER, CENTER); textSize(16);
-      text("全部重畫", width / 2 - 60, height - 42);
-      text("畫好送出", width / 2 + 60, height - 42);
+      let btnY = height - 65;
+      let btnW = 95;
+      let btnH = 45;
 
-      // 3. 畫出作品
+      // 🏠 回選單 (灰色)
+      fill(96, 125, 139); 
+      rect(width / 2 - 155, btnY, btnW, btnH, 25);
+      
+      // 🔄 全部重畫 (紅色)
+      fill(244, 67, 54); 
+      rect(width / 2 - 47, btnY, btnW, btnH, 25);
+      
+      // ✅ 畫好送出 (綠色)
+      fill(76, 175, 80); 
+      rect(width / 2 + 60, btnY, btnW, btnH, 25);
+      
+      // 按鈕文字
+      fill(255);
+      textAlign(CENTER, CENTER);
+      textSize(15);
+      text("🏠 回選單", width / 2 - 107, height - 42);
+      text("全部重畫", width / 2, height - 42);
+      text("畫好送出", width / 2 + 107, height - 42);
+
+      // 3. 畫出畫作
       noFill();
       for (let s of allStrokes) {
         stroke(s.color); strokeWeight(6);
@@ -85,6 +101,7 @@
     }
 
     function touchStarted() {
+      // 點擊調色盤
       for (let i = 0; i < colors.length; i++) {
         let x = width / 2 - 125 + i * 50;
         if (dist(mouseX, mouseY, x, 45) < 25) {
@@ -92,9 +109,19 @@
           return false;
         }
       }
+
+      // 點擊下方按鈕區域
       if (mouseY > height - 70) {
-        if (mouseX > width/2 - 110 && mouseX < width/2 - 10) allStrokes = [];
-        else if (mouseX > width/2 + 10 && mouseX < width/2 + 110) {
+        // 點擊：回選單
+        if (mouseX > width/2 - 155 && mouseX < width/2 - 60) {
+          location.href = 'index.html';
+        } 
+        // 點擊：全部重畫
+        else if (mouseX > width/2 - 47 && mouseX < width/2 + 48) {
+          allStrokes = [];
+        } 
+        // 點擊：畫好送出
+        else if (mouseX > width/2 + 60 && mouseX < width/2 + 155) {
           if (allStrokes.length > 0) {
             fishRef.push({ strokes: allStrokes, timestamp: Date.now() });
             allStrokes = [];
@@ -103,6 +130,8 @@
         }
         return false;
       }
+
+      // 繪圖區域判定
       if (mouseY > 90 && mouseY < height - 90) {
         isDrawing = true;
         currentStroke = [];
