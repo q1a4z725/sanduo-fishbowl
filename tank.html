@@ -1,37 +1,100 @@
-function updateAndDrawFish(fish, idx) {
-  let pos = fishPositions[idx];
-  if (!pos) return;
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <title>大魚缸 - 三多郵局教保中心</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+  <style>
+    body { margin: 0; padding: 0; overflow: hidden; background: #001b33; }
+    #nav { position: fixed; top: 10px; left: 10px; z-index: 100; opacity: 0.1; transition: 0.5s; }
+    #nav:hover { opacity: 1; }
+    button { padding: 8px 15px; background: rgba(255,255,255,0.2); color: white; border: 1px solid white; border-radius: 5px; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <div id="nav">
+    <button onclick="location.href='index.html'">🏠 離開</button>
+  </div>
 
-  pos.offX += pos.vx;
-  pos.offY += pos.vy;
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyBQvX-H_SmO44BVecOOEjghfBrlycbvh4s",
+      authDomain: "sanduo-fish.firebaseapp.com",
+      databaseURL: "https://sanduo-fish-default-rtdb.firebaseio.com",
+      projectId: "sanduo-fish",
+      storageBucket: "sanduo-fish.firebasestorage.app",
+      messagingSenderId: "542464179839",
+      appId: "1:542464179839:web:bad971b3c2bfc2cf894a"
+    };
 
-  // 以第一筆劃的第一個點作為基準來判斷邊界
-  let firstPoint = fish.strokes[0].points[0];
-  let headX = firstPoint.x + pos.offX;
-  let headY = firstPoint.y + pos.offY;
+    firebase.initializeApp(firebaseConfig);
+    const fishRef = firebase.database().ref('fishes');
 
-  if (headX < 0 || headX > width) pos.vx *= -1;
-  if (headY < 0 || headY > height) pos.vy *= -1;
+    let allFishes = [];
+    let fishPositions = [];
 
-  push();
-  translate(pos.offX, pos.offY);
-  
-  if (pos.vx < 0) {
-    translate(firstPoint.x * 2, 0);
-    scale(-1, 1);
-  }
-
-  // 繪製這條魚的所有筆劃
-  for (let s of fish.strokes) {
-    stroke(s.color);
-    strokeWeight(3);
-    noFill();
-    beginShape();
-    for (let j = 0; j < s.points.length; j++) {
-      let swing = sin(frameCount * 0.1 + j * 0.3) * (j * 0.2);
-      vertex(s.points[j].x + swing, s.points[j].y + swing * 0.3);
+    function setup() {
+      createCanvas(windowWidth, windowHeight);
+      fishRef.limitToLast(30).on('child_added', (snapshot) => {
+        let data = snapshot.val();
+        // 舊版資料相容處理
+        if (data.path) {
+          data.strokes = [{ points: data.path, color: data.color || '#fff' }];
+        }
+        allFishes.push(data);
+        fishPositions.push({
+          offX: 0, offY: 0,
+          vx: random(-1.5, 1.5),
+          vy: random(-0.8, 0.8)
+        });
+      });
     }
-    endShape();
-  }
-  pop();
-}
+
+    function draw() {
+      background(0, 27, 51);
+      
+      for (let i = 0; i < allFishes.length; i++) {
+        let fish = allFishes[i];
+        let pos = fishPositions[i];
+        
+        pos.offX += pos.vx;
+        pos.offY += pos.vy;
+
+        // 以第一筆劃的第一個點為基準
+        let baseP = fish.strokes[0].points[0];
+        let headX = baseP.x + pos.offX;
+        let headY = baseP.y + pos.offY;
+
+        if (headX < 0 || headX > width) pos.vx *= -1;
+        if (headY < 0 || headY > height) pos.vy *= -1;
+
+        push();
+        translate(pos.offX, pos.offY);
+        
+        // 往左游時水平翻轉
+        if (pos.vx < 0) {
+          translate(baseP.x * 2, 0);
+          scale(-1, 1);
+        }
+
+        // 畫出這條魚的所有彩色筆劃
+        for (let s of fish.strokes) {
+          stroke(s.color);
+          strokeWeight(3);
+          noFill();
+          beginShape();
+          for (let j = 0; j < s.points.length; j++) {
+            let swing = sin(frameCount * 0.1 + j * 0.3) * (j * 0.2);
+            vertex(s.points[j].x + swing, s.points[j].y + swing * 0.3);
+          }
+          endShape();
+        }
+        pop();
+      }
+    }
+    function windowResized() { resizeCanvas(windowWidth, windowHeight); }
+  </script>
+</body>
+</html>
