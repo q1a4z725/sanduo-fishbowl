@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <title>畫魚室 - 三多郵局教保中心</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+  <style>
+    body { margin: 0; padding: 0; overflow: hidden; background: #f0f0f0; touch-action: none; }
+    #ui { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); text-align: center; }
+    button { padding: 15px 30px; font-size: 24px; background: #ff9800; color: white; border: none; border-radius: 50px; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
+  </style>
+</head>
+<body>
+  <div id="ui"><button id="sendBtn">完成！把魚放進魚缸 ➔</button></div>
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyBQvX-H_SmO44BVecOOEjghfBrlycbvh4s",
+      authDomain: "sanduo-fish.firebaseapp.com",
+      databaseURL: "https://sanduo-fish-default-rtdb.firebaseio.com",
+      projectId: "sanduo-fish",
+      storageBucket: "sanduo-fish.firebasestorage.app",
+      messagingSenderId: "542464179839",
+      appId: "1:542464179839:web:bad971b3c2bfc2cf894a"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const fishRef = firebase.database().ref('fishes');
+
+    let myPath = [];
+    function setup() { createCanvas(windowWidth, windowHeight); }
+    function draw() {
+      background(255);
+      stroke(0, 100, 200);
+      strokeWeight(5);
+      noFill();
+      beginShape();
+      for (let p of myPath) vertex(p.x, p.y);
+      endShape();
+    }
+    function mouseDragged() { myPath.push({x: mouseX, y: mouseY}); }
+    document.getElementById('sendBtn').onclick = function() {
+      if (myPath.length > 5) {
+        fishRef.push({
+          path: myPath,
+          color: `rgb(${floor(random(100,255))}, ${floor(random(50,150))}, ${floor(random(0,100))})`,
+          timestamp: Date.now()
+        });
+        myPath = [];
+        alert("魚兒游走囉！快去看大螢幕！");
+      }
+    };
+  </script>
+</body>
+</html>
