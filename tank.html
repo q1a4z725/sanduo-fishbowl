@@ -2,11 +2,19 @@
 <html lang="zh-TW">
 <head>
   <meta charset="UTF-8">
-  <title>大魚缸 - 三多郵局教保中心</title>
+  <title>三多魚缸 - 藝廊展示版</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
-  <style> body { margin: 0; padding: 0; overflow: hidden; background: #001b33; } </style>
+  <style>
+    body { 
+      margin: 0; 
+      padding: 0; 
+      overflow: hidden; 
+      /* 背景換成溫暖的淺米色 */
+      background-color: #f8f4ed; 
+    }
+  </style>
 </head>
 <body>
   <script>
@@ -24,13 +32,13 @@
 
     let allFishes = [];
     let fishPositions = [];
-    const TARGET_SIZE = 180; // 約 5cm 的像素大小
+    const TARGET_SIZE = 180; // 約 5cm
 
     function setup() {
       createCanvas(windowWidth, windowHeight);
       fishRef.limitToLast(30).on('child_added', (snapshot) => {
         let data = snapshot.val();
-        if (data.path) { data.strokes = [{ points: data.path, color: data.color || '#fff' }]; }
+        if (data.path) { data.strokes = [{ points: data.path, color: data.color || '#333' }]; }
         
         let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
         data.strokes.forEach(s => {
@@ -49,34 +57,60 @@
           centerX: (minX + maxX) / 2,
           centerY: (minY + maxY) / 2
         });
-        fishPositions.push({ offX: random(width), offY: random(height), vx: random(-1.2, 1.2), vy: random(-0.5, 0.5) });
+        // 初始位置
+        fishPositions.push({ offX: random(width), offY: random(height), vx: random(-1, 1), vy: random(-0.5, 0.5) });
       });
     }
 
     function draw() {
-      background(0, 27, 51);
+      // 背景設為淺色 (淺米色)
+      background(248, 244, 237);
+
       for (let i = 0; i < allFishes.length; i++) {
         let fish = allFishes[i], pos = fishPositions[i];
         pos.offX += pos.vx; pos.offY += pos.vy;
 
-        if (pos.offX < -50 || pos.offX > width + 50) pos.vx *= -1;
-        if (pos.offY < -50 || pos.offY > height + 50) pos.vy *= -1;
+        // 邊界判定
+        if (pos.offX < 100 || pos.offX > width - 100) pos.vx *= -1;
+        if (pos.offY < 100 || pos.offY > height - 100) pos.vy *= -1;
 
         push();
         translate(pos.offX, pos.offY);
+
+        // --- 1. 畫出魚的「外框相框」 ---
+        noFill();
+        stroke(200, 190, 170); // 淺木頭色的框
+        strokeWeight(2);
+        // 畫一個比魚稍微大一點的圓角矩形相框
+        rectMode(CENTER);
+        rect(0, 0, TARGET_SIZE + 40, TARGET_SIZE + 40, 15);
+        
+        // 加入一點點微弱的框內陰影感
+        fill(255, 255, 255, 150);
+        noStroke();
+        rect(0, 0, TARGET_SIZE + 40, TARGET_SIZE + 40, 15);
+
+        // --- 2. 畫出魚兒 ---
         if (pos.vx < 0) scale(-1, 1);
         scale(fish.scale);
         translate(-fish.centerX, -fish.centerY);
 
         for (let s of fish.data.strokes) {
-          stroke(s.color); strokeWeight(5 / fish.scale); noFill();
+          // 如果小朋友畫白色在淺色背景會看不見，這裡做個防呆：將太淺的顏色變深
+          let c = color(s.color);
+          if (brightness(c) > 95) stroke(100); 
+          else stroke(s.color);
+          
+          strokeWeight(5 / fish.scale); 
+          noFill();
           beginShape();
-          for (let p of s.points) vertex(p.x, p.y); // 純漂浮，無扭動
+          for (let p of s.points) vertex(p.x, p.y);
           endShape();
         }
         pop();
       }
     }
+
     function windowResized() { resizeCanvas(windowWidth, windowHeight); }
   </script>
 </body>
