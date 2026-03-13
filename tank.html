@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
   <meta charset="UTF-8">
-  <title>大魚缸 - 三多郵局教保中心</title>
+  <title>大魚缸 (固定尺寸版) - 三多郵局教保中心</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
@@ -24,15 +24,35 @@
 
     let allFishes = [];
     let fishPositions = [];
+    const TARGET_SIZE = 180; // 這代表約 5 公分的像素值
 
     function setup() {
       createCanvas(windowWidth, windowHeight);
       fishRef.limitToLast(30).on('child_added', (snapshot) => {
         let data = snapshot.val();
-        // 舊資料相容處理
         if (data.path) { data.strokes = [{ points: data.path, color: data.color || '#fff' }]; }
-        allFishes.push(data);
-        fishPositions.push({ offX: 0, offY: 0, vx: random(-1.2, 1.2), vy: random(-0.5, 0.5) });
+        
+        // --- 計算這條魚的原始邊界 ---
+        let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+        data.strokes.forEach(s => {
+          s.points.forEach(p => {
+            minX = min(minX, p.x); maxX = max(maxX, p.x);
+            minY = min(minY, p.y); maxY = max(maxY, p.y);
+          });
+        });
+
+        let origW = maxX - minX;
+        let origH = maxY - minY;
+        let scaleFactor = TARGET_SIZE / max(origW, origH, 1);
+
+        allFishes.push({
+          data: data,
+          scale: scaleFactor,
+          centerX: (minX + maxX) / 2,
+          centerY: (minY + maxY) / 2
+        });
+
+        fishPositions.push({ offX: random(width), offY: random(height), vx: random(-1, 1), vy: random(-0.5, 0.5) });
       });
     }
 
@@ -41,29 +61,30 @@
       for (let i = 0; i < allFishes.length; i++) {
         let fish = allFishes[i];
         let pos = fishPositions[i];
+        
         pos.offX += pos.vx;
         pos.offY += pos.vy;
 
-        let firstStroke = fish.strokes[0];
-        let headX = firstStroke.points[0].x + pos.offX;
-        let headY = firstStroke.points[0].y + pos.offY;
-
-        if (headX < 0 || headX > width) pos.vx *= -1;
-        if (headY < 0 || headY > height) pos.vy *= -1;
+        // 邊界檢查 (使用固定大小判定)
+        if (pos.offX < -50 || pos.offX > width + 50) pos.vx *= -1;
+        if (pos.offY < -50 || pos.offY > height + 50) pos.vy *= -1;
 
         push();
         translate(pos.offX, pos.offY);
-        if (pos.vx < 0) { 
-          translate(firstStroke.points[0].x * 2, 0); 
-          scale(-1, 1); 
-        }
+        
+        // 左右轉向
+        if (pos.vx < 0) scale(-1, 1);
 
-        for (let s of fish.strokes) {
-          stroke(s.color); strokeWeight(3); noFill();
+        // 進行縮放：讓魚的大小統一
+        scale(fish.scale);
+        // 將魚的中心移到座標原點
+        translate(-fish.centerX, -fish.centerY);
+
+        for (let s of fish.data.strokes) {
+          stroke(s.color); strokeWeight(5 / fish.scale); // 補償縮放後的線條粗細
+          noFill();
           beginShape();
-          for (let p of s.points) {
-            vertex(p.x, p.y); // 移除了 swing 計算，魚不會再扭動
-          }
+          for (let p of s.points) vertex(p.x, p.y);
           endShape();
         }
         pop();
