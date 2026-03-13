@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
   <meta charset="UTF-8">
-  <title>三多魚缸 - 藝廊展示版</title>
+  <title>三多魚缸 - 大畫框藝廊版</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
@@ -11,8 +11,11 @@
       margin: 0; 
       padding: 0; 
       overflow: hidden; 
-      /* 背景換成溫暖的淺米色 */
-      background-color: #f8f4ed; 
+      background-color: #e0e0e0; /* 牆壁顏色：淺灰色 */
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
     }
   </style>
 </head>
@@ -33,6 +36,7 @@
     let allFishes = [];
     let fishPositions = [];
     const TARGET_SIZE = 180; // 約 5cm
+    const margin = 60; // 邊框的厚度
 
     function setup() {
       createCanvas(windowWidth, windowHeight);
@@ -57,48 +61,52 @@
           centerX: (minX + maxX) / 2,
           centerY: (minY + maxY) / 2
         });
-        // 初始位置
-        fishPositions.push({ offX: random(width), offY: random(height), vx: random(-1, 1), vy: random(-0.5, 0.5) });
+        // 初始位置設定在框框內
+        fishPositions.push({ 
+          offX: random(margin + 100, width - margin - 100), 
+          offY: random(margin + 100, height - margin - 100), 
+          vx: random(-1.2, 1.2), 
+          vy: random(-0.6, 0.6) 
+        });
       });
     }
 
     function draw() {
-      // 背景設為淺色 (淺米色)
-      background(248, 244, 237);
+      // 1. 畫出背景 (模擬牆面)
+      background(230); 
 
+      // 2. 畫出「大畫框」內部的畫布區域
+      fill(250, 248, 240); // 畫布顏色：溫潤米白
+      stroke(100, 80, 60); // 畫框顏色：深木頭色
+      strokeWeight(margin); // 邊框寬度
+      rect(margin/2, margin/2, width - margin, height - margin, 10);
+
+      // 3. 繪製魚兒 (限制在框內游動)
       for (let i = 0; i < allFishes.length; i++) {
         let fish = allFishes[i], pos = fishPositions[i];
         pos.offX += pos.vx; pos.offY += pos.vy;
 
-        // 邊界判定
-        if (pos.offX < 100 || pos.offX > width - 100) pos.vx *= -1;
-        if (pos.offY < 100 || pos.offY > height - 100) pos.vy *= -1;
+        // --- 碰撞偵測 (碰到大畫框邊界就反彈) ---
+        // 左右反彈
+        if (pos.offX < margin + 50 || pos.offX > width - margin - 50) {
+          pos.vx *= -1;
+        }
+        // 上下反彈
+        if (pos.offY < margin + 50 || pos.offY > height - margin - 50) {
+          pos.vy *= -1;
+        }
 
         push();
         translate(pos.offX, pos.offY);
-
-        // --- 1. 畫出魚的「外框相框」 ---
-        noFill();
-        stroke(200, 190, 170); // 淺木頭色的框
-        strokeWeight(2);
-        // 畫一個比魚稍微大一點的圓角矩形相框
-        rectMode(CENTER);
-        rect(0, 0, TARGET_SIZE + 40, TARGET_SIZE + 40, 15);
         
-        // 加入一點點微弱的框內陰影感
-        fill(255, 255, 255, 150);
-        noStroke();
-        rect(0, 0, TARGET_SIZE + 40, TARGET_SIZE + 40, 15);
-
-        // --- 2. 畫出魚兒 ---
         if (pos.vx < 0) scale(-1, 1);
         scale(fish.scale);
         translate(-fish.centerX, -fish.centerY);
 
         for (let s of fish.data.strokes) {
-          // 如果小朋友畫白色在淺色背景會看不見，這裡做個防呆：將太淺的顏色變深
+          // 防呆：太淺的顏色轉深，避免在米白畫布上看不見
           let c = color(s.color);
-          if (brightness(c) > 95) stroke(100); 
+          if (brightness(c) > 95) stroke(80); 
           else stroke(s.color);
           
           strokeWeight(5 / fish.scale); 
@@ -109,6 +117,12 @@
         }
         pop();
       }
+      
+      // 4. 裝飾：在畫框邊角加一點陰影感
+      noFill();
+      stroke(0, 0, 0, 30);
+      strokeWeight(5);
+      rect(margin/2, margin/2, width - margin, height - margin, 10);
     }
 
     function windowResized() { resizeCanvas(windowWidth, windowHeight); }
