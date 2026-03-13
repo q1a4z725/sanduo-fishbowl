@@ -8,23 +8,19 @@
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
   <style>
     body { 
-      margin: 0; padding: 0; overflow: hidden; 
-      background-color: #e0e0e0; 
+      margin: 0; padding: 0; overflow: hidden; background-color: #e0e0e0; 
       display: flex; justify-content: center; align-items: center; height: 100vh;
-      touch-action: none; /* 防止手機瀏覽器預設的縮放與捲動 */
+      touch-action: none;
     }
     #nav { position: fixed; top: 10px; left: 10px; z-index: 9999; }
     #nav button { 
       padding: 10px 15px; background: rgba(0, 0, 0, 0.3); color: white; 
-      border: 1px solid rgba(255, 255, 255, 0.5); border-radius: 5px; 
-      cursor: pointer; font-size: 14px; transition: 0.3s;
+      border: 1px solid rgba(255, 255, 255, 0.5); border-radius: 5px; cursor: pointer;
     }
   </style>
 </head>
 <body>
-  <div id="nav">
-    <button onclick="location.href='index.html'">🏠 離開魚缸</button>
-  </div>
+  <div id="nav"><button onclick="location.href='index.html'">🏠 離開魚缸</button></div>
 
   <script>
     const firebaseConfig = {
@@ -43,13 +39,12 @@
     let fishStates = [];
     const TARGET_SIZE = 180; 
     const margin = 60; 
-    let draggingFish = null; // 紀錄正在被拖移的魚
+    let draggingFish = null;
 
     function setup() {
       createCanvas(windowWidth, windowHeight);
       fishRef.limitToLast(30).on('child_added', (snapshot) => {
         let data = snapshot.val();
-        if (data.path) { data.strokes = [{ points: data.path, color: data.color || '#333' }]; }
         
         let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
         data.strokes.forEach(s => {
@@ -66,14 +61,14 @@
           data: data,
           scale: scaleFactor,
           centerX: (minX + maxX) / 2,
-          centerY: (minY + maxY) / 2
+          centerY: (minY + maxY) / 2,
+          owner: data.owner || "小畫家" // 讀取名字
         });
 
         fishStates.push({ 
           offX: random(margin + 100, width - margin - 100), 
           offY: random(margin + 100, height - margin - 100), 
-          vx: random(-1.2, 1.2), 
-          vy: random(-0.5, 0.5),
+          vx: random(-1.2, 1.2), vy: random(-0.5, 0.5),
           isDragging: false
         });
       });
@@ -81,32 +76,32 @@
 
     function draw() {
       background(230); 
-
-      // 1. 畫出大畫框
-      fill(250, 248, 240); 
-      stroke(100, 80, 60); 
-      strokeWeight(margin); 
+      fill(250, 248, 240); stroke(100, 80, 60); strokeWeight(margin); 
       rect(margin/2, margin/2, width - margin, height - margin, 10);
 
-      // 2. 繪製魚兒
       for (let i = 0; i < allFishes.length; i++) {
         let fish = allFishes[i], state = fishStates[i];
         
-        // 如果沒有在被拖移，就正常游動
         if (!state.isDragging) {
-          state.offX += state.vx; 
-          state.offY += state.vy;
-
+          state.offX += state.vx; state.offY += state.vy;
           if (state.offX < margin + 50 || state.offX > width - margin - 50) state.vx *= -1;
           if (state.offY < margin + 50 || state.offY > height - margin - 50) state.vy *= -1;
         } else {
-          // 被拖移時，跟隨滑鼠/手指位置
-          state.offX = mouseX;
-          state.offY = mouseY;
+          state.offX = mouseX; state.offY = mouseY;
         }
 
         push();
         translate(state.offX, state.offY);
+
+        // 畫出主人名字 (呈現在魚的下方)
+        push();
+        textAlign(CENTER);
+        textSize(16);
+        noStroke();
+        fill(100, 100, 100);
+        text(fish.owner, 0, (TARGET_SIZE/2) + 25);
+        pop();
+
         if (state.vx < 0) scale(-1, 1);
         scale(fish.scale);
         translate(-fish.centerX, -fish.centerY);
@@ -115,8 +110,6 @@
           let c = color(s.color);
           if (red(c) > 240 && green(c) > 240 && blue(c) > 240) stroke(80); 
           else stroke(s.color);
-          
-          // 被拖移時線條稍微發光（加粗）
           strokeWeight(state.isDragging ? 10 / fish.scale : 5 / fish.scale); 
           noFill();
           beginShape();
@@ -125,36 +118,19 @@
         }
         pop();
       }
-      
-      // 3. 裝飾陰影
-      noFill();
-      stroke(0, 0, 0, 30);
-      strokeWeight(5);
+      noFill(); stroke(0, 0, 0, 30); strokeWeight(5);
       rect(margin/2, margin/2, width - margin, height - margin, 10);
     }
 
-    // --- 拖移互動邏輯 ---
     function mousePressed() {
-      // 從最後畫的魚（最上面的）開始檢查
       for (let i = allFishes.length - 1; i >= 0; i--) {
         let state = fishStates[i];
-        let d = dist(mouseX, mouseY, state.offX, state.offY);
-        
-        if (d < TARGET_SIZE / 2) {
-          state.isDragging = true;
-          draggingFish = i;
-          break; // 一次只抓一條魚
+        if (dist(mouseX, mouseY, state.offX, state.offY) < TARGET_SIZE / 2) {
+          state.isDragging = true; draggingFish = i; break;
         }
       }
     }
-
-    function mouseReleased() {
-      if (draggingFish !== null) {
-        fishStates[draggingFish].isDragging = false;
-        draggingFish = null;
-      }
-    }
-
+    function mouseReleased() { if (draggingFish !== null) { fishStates[draggingFish].isDragging = false; draggingFish = null; } }
     function windowResized() { resizeCanvas(windowWidth, windowHeight); }
   </script>
 </body>
