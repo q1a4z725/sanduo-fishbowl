@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>三多郵局教保中心 - 多人魚缸</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+  
+  <style>
+    body { margin: 0; padding: 0; overflow: hidden; background: #0a1e3c; }
+    #ui { position: absolute; top: 15px; left: 15px; color: white; font-family: "Microsoft JhengHei", sans-serif; pointer-events: none; text-shadow: 1px 1px 2px black; }
+  </style>
+</head>
+<body>
+  <div id="ui">
+    <h2>🎨 多人互動魚缸</h2>
+    <p>按住滑鼠畫一條魚，放開後牠就會游入大家的魚缸！</p>
+  </div>
+
+  <script>
+    // --- 1. 你的專屬 Firebase 配置 (已根據截圖填入) ---
+    const firebaseConfig = {
+      apiKey: "AIzaSyBQvX-H_SmO44BVecOOEjghfBrlycbvh4s",
+      authDomain: "sanduo-fish.firebaseapp.com",
+      databaseURL: "https://sanduo-fish-default-rtdb.firebaseio.com",
+      projectId: "sanduo-fish",
+      storageBucket: "sanduo-fish.firebasestorage.app",
+      messagingSenderId: "542464179839",
+      appId: "1:542464179839:web:bad971b3c2bfc2cf894a",
+      measurementId: "G-7YE6HQX10Q"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const database = firebase.database();
+    const fishRef = database.ref('fishes');
+
+    // --- 2. 邏輯程式碼 ---
+    let myPath = [];
+    let allFishes = [];
+    const MAX_FISH = 30; 
+
+    function setup() {
+      createCanvas(windowWidth, windowHeight);
+      
+      // 監聽雲端資料庫
+      fishRef.limitToLast(MAX_FISH).on('child_added', (snapshot) => {
+        allFishes.push(snapshot.val());
+        if (allFishes.length > MAX_FISH) allFishes.shift();
+      });
+    }
+
+    function draw() {
+      background(10, 30, 60);
+
+      // 畫出所有人的魚
+      for (let fish of allFishes) {
+        drawFish(fish);
+      }
+
+      // 畫出正在畫的線
+      if (mouseIsPressed) {
+        stroke(255, 255, 0);
+        strokeWeight(4);
+        noFill();
+        beginShape();
+        for (let p of myPath) vertex(p.x, p.y);
+        endShape();
+        myPath.push({x: mouseX, y: mouseY});
+      }
+    }
+
+    function mouseReleased() {
+      if (myPath.length > 5) {
+        let fishColor = `rgb(${floor(random(100,255))}, ${floor(random(100,255))}, ${floor(random(100,255))})`;
+        fishRef.push({
+          path: myPath,
+          color: fishColor,
+          timestamp: Date.now()
+        });
+      }
+      myPath = [];
+    }
+
+    function drawFish(fish) {
+      push(); // 暫存畫布狀態
+      
+      // 1. 計算位移量：根據時間(frameCount)讓魚往右移動
+      // 用 timestamp 讓每條魚的速度微幅不同
+      let speed = (fish.timestamp % 3) + 1; 
+      let xOffset = (frameCount * speed) % (width + 400) - 200;
+
+      // 2. 移動座標系統
+      translate(xOffset, 0);
+
+      stroke(fish.color);
+      strokeWeight(3);
+      noFill();
+      beginShape();
+      for (let i = 0; i < fish.path.length; i++) {
+        // 3. 身體擺動公式
+        let swing = sin(frameCount * 0.1 + i * 0.3) * (i * 0.2);
+        vertex(fish.path[i].x + swing, fish.path[i].y + swing * 0.3);
+      }
+      endShape();
+      
+      pop(); // 恢復畫布狀態，避免影響下一條魚
+    }
+
+
+    function windowResized() { resizeCanvas(windowWidth, windowHeight); }
+  </script>
+</body>
+</html>
