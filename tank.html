@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <title>大魚缸 - 三多郵局教保中心</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+  <style> body { margin: 0; padding: 0; overflow: hidden; background: #001b33; } </style>
+</head>
+<body>
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyBQvX-H_SmO44BVecOOEjghfBrlycbvh4s",
+      authDomain: "sanduo-fish.firebaseapp.com",
+      databaseURL: "https://sanduo-fish-default-rtdb.firebaseio.com",
+      projectId: "sanduo-fish",
+      storageBucket: "sanduo-fish.firebasestorage.app",
+      messagingSenderId: "542464179839",
+      appId: "1:542464179839:web:bad971b3c2bfc2cf894a"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const fishRef = firebase.database().ref('fishes');
+
+    let allFishes = [];
+    let fishPositions = [];
+
+    function setup() {
+      createCanvas(windowWidth, windowHeight);
+      fishRef.limitToLast(30).on('child_added', (snapshot) => {
+        allFishes.push(snapshot.val());
+        fishPositions.push({ offX: 0, offY: 0, vx: random(-1.5, 1.5), vy: random(-0.8, 0.8) });
+      });
+    }
+
+    function draw() {
+      background(0, 27, 51);
+      for (let i = 0; i < allFishes.length; i++) {
+        let fish = allFishes[i];
+        let pos = fishPositions[i];
+        pos.offX += pos.vx;
+        pos.offY += pos.vy;
+
+        let headX = fish.path[0].x + pos.offX;
+        let headY = fish.path[0].y + pos.offY;
+        if (headX < 0 || headX > width) pos.vx *= -1;
+        if (headY < 0 || headY > height) pos.vy *= -1;
+
+        push();
+        translate(pos.offX, pos.offY);
+        if (pos.vx < 0) { translate(fish.path[0].x * 2, 0); scale(-1, 1); }
+        stroke(fish.color); strokeWeight(3); noFill();
+        beginShape();
+        for (let j = 0; j < fish.path.length; j++) {
+          let swing = sin(frameCount * 0.1 + j * 0.3) * (j * 0.2);
+          vertex(fish.path[j].x + swing, fish.path[j].y + swing * 0.3);
+        }
+        endShape();
+        pop();
+      }
+    }
+    function windowResized() { resizeCanvas(windowWidth, windowHeight); }
+  </script>
+</body>
+</html>
