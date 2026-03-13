@@ -55,8 +55,8 @@
       background(10, 30, 60);
 
       // 畫出所有人的魚
-      for (let fish of allFishes) {
-        drawFish(fish);
+      for (let i = 0; i < allFishes.length; i++) {
+      drawFish(allFishes[i], i);
       }
 
       // 畫出正在畫的線
@@ -83,30 +83,53 @@
       myPath = [];
     }
 
-    function drawFish(fish) {
-      push(); // 暫存畫布狀態
-      
-      // 1. 計算位移量：根據時間(frameCount)讓魚往右移動
-      // 用 timestamp 讓每條魚的速度微幅不同
-      let speed = (fish.timestamp % 3) + 1; 
-      let xOffset = (frameCount * speed) % (width + 400) - 200;
+    // 在 draw() 之外定義一個物件來儲存每條魚的即時位置
+let fishPositions = {};
 
-      // 2. 移動座標系統
-      translate(xOffset, 0);
+function drawFish(fish, id) {
+  // 1. 初始化位置 (如果這條魚還沒有在畫面上移動過)
+  if (!fishPositions[id]) {
+    fishPositions[id] = {
+      x: fish.path[0].x,
+      y: fish.path[0].y,
+      vx: random(-2, 2), // 左右速度
+      vy: random(-1, 1), // 上下速度
+    };
+  }
 
-      stroke(fish.color);
-      strokeWeight(3);
-      noFill();
-      beginShape();
-      for (let i = 0; i < fish.path.length; i++) {
-        // 3. 身體擺動公式
-        let swing = sin(frameCount * 0.1 + i * 0.3) * (i * 0.2);
-        vertex(fish.path[i].x + swing, fish.path[i].y + swing * 0.3);
-      }
-      endShape();
-      
-      pop(); // 恢復畫布狀態，避免影響下一條魚
-    }
+  let p = fishPositions[id];
+
+  // 2. 更新位置
+  p.x += p.x + p.vx;
+  p.y += p.y + p.vy;
+
+  // 3. 邊界檢查 (撞牆反彈)
+  if (p.x < 0 || p.x > width) p.vx *= -1;
+  if (p.y < 0 || p.y > height) p.vy *= -1;
+
+  // 4. 繪製魚
+  push();
+  // 將畫布中心移到魚的位置
+  translate(p.x - fish.path[0].x, p.y - fish.path[0].y);
+  
+  // 根據前進方向旋轉魚的身軀 (選配，讓魚看起來更自然)
+  if (p.vx < 0) { 
+    // 如果往左游，水平翻轉
+    translate(fish.path[0].x * 2, 0);
+    scale(-1, 1);
+  }
+
+  stroke(fish.color);
+  strokeWeight(3);
+  noFill();
+  beginShape();
+  for (let i = 0; i < fish.path.length; i++) {
+    let swing = sin(frameCount * 0.1 + i * 0.3) * (i * 0.2);
+    vertex(fish.path[i].x + swing, fish.path[i].y + swing * 0.3);
+  }
+  endShape();
+  pop();
+}
 
 
     function windowResized() { resizeCanvas(windowWidth, windowHeight); }
