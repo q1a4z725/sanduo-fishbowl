@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>畫魚室 - 三多郵局教保中心</title>
+  <title>畫魚室(修正版) - 三多郵局教保中心</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
@@ -53,13 +53,15 @@
       strokeWeight(5);
       noFill();
 
+      // 畫出舊的筆劃
       for (let s of allStrokes) {
         beginShape();
         for (let p of s) vertex(p.x, p.y);
         endShape();
       }
 
-      if (mouseIsPressed) {
+      // 畫出現在這一筆
+      if (mouseIsPressed && mouseY < height - 80) { // 限制：如果太靠近底部按鈕區，就不畫
         currentStroke.push({x: mouseX, y: mouseY});
         beginShape();
         for (let p of currentStroke) vertex(p.x, p.y);
@@ -67,8 +69,11 @@
       }
     }
 
+    // 只有在滑鼠放開且不是在按鈕上時，才存入筆劃
     function mouseReleased() {
-      if (currentStroke.length > 2) allStrokes.push(currentStroke);
+      if (currentStroke.length > 2 && mouseY < height - 80) {
+        allStrokes.push(currentStroke);
+      }
       currentStroke = [];
     }
 
