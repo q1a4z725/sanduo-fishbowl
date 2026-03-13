@@ -16,7 +16,6 @@
   <button id="homeBtn" onclick="location.href='index.html'">🏠 回選單</button>
 
   <script>
-    // --- Firebase 配置 ---
     const firebaseConfig = {
       apiKey: "AIzaSyBQvX-H_SmO44BVecOOEjghfBrlycbvh4s",
       authDomain: "sanduo-fish.firebaseapp.com",
@@ -42,7 +41,7 @@
     function draw() {
       background(255);
       
-      // 1. 畫出調色盤 (畫在畫布上，避免 HTML 阻擋)
+      // 1. 畫出調色盤
       noStroke();
       for (let i = 0; i < colors.length; i++) {
         fill(colors[i]);
@@ -55,10 +54,11 @@
         }
       }
 
-      // 2. 畫出按鈕 (重畫與送出)
-      fill(244, 67, 54); // 紅色
+      // 2. 畫出按鈕
+      noStroke();
+      fill(244, 67, 54); 
       rect(width / 2 - 110, height - 60, 100, 40, 20);
-      fill(76, 175, 80); // 綠色
+      fill(76, 175, 80); 
       rect(width / 2 + 10, height - 60, 100, 40, 20);
       
       fill(255);
@@ -67,7 +67,7 @@
       text("全部重畫", width / 2 - 60, height - 40);
       text("畫好送出", width / 2 + 60, height - 40);
 
-      // 3. 畫出筆劃
+      // 3. 畫出已完成的筆劃
       noFill();
       for (let s of allStrokes) {
         stroke(s.color);
@@ -77,6 +77,7 @@
         endShape();
       }
 
+      // 4. 畫出正在畫的筆劃
       if (isDrawing) {
         stroke(currentColor);
         strokeWeight(6);
@@ -86,51 +87,53 @@
       }
     }
 
-    function mousePressed() {
+    // 使用 touchStarted 確保手機反應最靈敏
+    function touchStarted() {
       // 點擊調色盤
       for (let i = 0; i < colors.length; i++) {
         let d = dist(mouseX, mouseY, width / 2 - 125 + i * 50, 40);
         if (d < 25) {
           currentColor = colors[i];
-          return;
+          return false;
         }
       }
 
-      // 點擊重畫按鈕
-      if (mouseX > width/2 - 110 && mouseX < width/2 - 10 && mouseY > height - 60 && mouseY < height - 20) {
-        allStrokes = [];
-        return;
-      }
-
-      // 點擊送出按鈕
-      if (mouseX > width/2 + 10 && mouseX < width/2 + 110 && mouseY > height - 60 && mouseY < height - 20) {
-        if (allStrokes.length > 0) {
-          fishRef.push({ strokes: allStrokes, timestamp: Date.now() });
+      // 點擊按鈕
+      if (mouseY > height - 60) {
+        if (mouseX > width/2 - 110 && mouseX < width/2 - 10) {
           allStrokes = [];
-          alert("魚兒游走囉！");
+        } else if (mouseX > width/2 + 10 && mouseX < width/2 + 110) {
+          if (allStrokes.length > 0) {
+            fishRef.push({ strokes: allStrokes, timestamp: Date.now() });
+            allStrokes = [];
+            alert("魚兒游走囉！");
+          }
         }
-        return;
+        return false;
       }
 
-      // 畫畫區域判定
+      // 畫畫區域
       if (mouseY > 80 && mouseY < height - 80) {
         isDrawing = true;
         currentStroke = [];
       }
+      return false;
     }
 
-    function mouseDragged() {
+    function touchMoved() {
       if (isDrawing) {
         currentStroke.push({x: mouseX, y: mouseY});
       }
+      return false;
     }
 
-    function mouseReleased() {
+    function touchEnded() {
       if (isDrawing && currentStroke.length > 2) {
         allStrokes.push({ points: currentStroke, color: currentColor });
       }
       isDrawing = false;
       currentStroke = [];
+      return false;
     }
 
     function windowResized() { resizeCanvas(windowWidth, windowHeight); }
