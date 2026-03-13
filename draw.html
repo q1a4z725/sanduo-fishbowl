@@ -2,23 +2,30 @@
 <html lang="zh-TW">
 <head>
   <meta charset="UTF-8">
-  <title>畫魚室(多筆劃版) - 三多郵局教保中心</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>畫魚室 - 三多郵局教保中心</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
   <style>
     body { margin: 0; padding: 0; overflow: hidden; background: #ffffff; touch-action: none; }
-    #ui { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); display: flex; gap: 10px; }
-    button { padding: 15px 25px; font-size: 20px; border: none; border-radius: 50px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-    #sendBtn { background: #4CAF50; color: white; }
-    #clearBtn { background: #f44336; color: white; }
+    #ui { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); display: flex; gap: 10px; z-index: 100; }
+    #nav { position: fixed; top: 15px; left: 15px; z-index: 100; }
+    button { padding: 12px 20px; font-size: 18px; border: none; border-radius: 50px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+    .btn-home { background: #607d8b; color: white; }
+    .btn-clear { background: #f44336; color: white; }
+    .btn-send { background: #4CAF50; color: white; font-weight: bold; }
   </style>
 </head>
 <body>
-  <div id="ui">
-    <button id="clearBtn">重畫 (擦掉)</button>
-    <button id="sendBtn">畫好了！放入魚缸 ➔</button>
+  <div id="nav">
+    <button class="btn-home" onclick="location.href='index.html'">🏠 回選單</button>
   </div>
+  <div id="ui">
+    <button class="btn-clear" id="clearBtn">重畫</button>
+    <button class="btn-send" id="sendBtn">畫好了！送出 ➔</button>
+  </div>
+
   <script>
     const firebaseConfig = {
       apiKey: "AIzaSyBQvX-H_SmO44BVecOOEjghfBrlycbvh4s",
@@ -29,63 +36,59 @@
       messagingSenderId: "542464179839",
       appId: "1:542464179839:web:bad971b3c2bfc2cf894a"
     };
+
     firebase.initializeApp(firebaseConfig);
     const fishRef = firebase.database().ref('fishes');
 
-    let allStrokes = []; // 儲存所有的筆劃
-    let currentStroke = []; // 正在畫的那一筆
+    let allStrokes = []; 
+    let currentStroke = [];
 
-    function setup() { createCanvas(windowWidth, windowHeight); }
+    function setup() {
+      createCanvas(windowWidth, windowHeight);
+    }
 
     function draw() {
       background(255);
-      stroke(0, 100, 200);
+      stroke(0, 102, 204);
       strokeWeight(5);
       noFill();
 
-      // 1. 畫出已經畫好的所有筆劃
-      for (let strokePath of allStrokes) {
+      for (let s of allStrokes) {
         beginShape();
-        for (let p of strokePath) vertex(p.x, p.y);
+        for (let p of s) vertex(p.x, p.y);
         endShape();
       }
 
-      // 2. 畫出現在正在動的那一筆
       if (mouseIsPressed) {
+        currentStroke.push({x: mouseX, y: mouseY});
         beginShape();
         for (let p of currentStroke) vertex(p.x, p.y);
         endShape();
       }
     }
 
-    function mousePressed() { currentStroke = []; }
-    function mouseDragged() { currentStroke.push({x: mouseX, y: mouseY}); }
-    function mouseReleased() { if (currentStroke.length > 2) allStrokes.push(currentStroke); }
+    function mouseReleased() {
+      if (currentStroke.length > 2) allStrokes.push(currentStroke);
+      currentStroke = [];
+    }
 
-    // 重畫按鈕
     document.getElementById('clearBtn').onclick = () => { allStrokes = []; };
 
-    // 送出按鈕
     document.getElementById('sendBtn').onclick = function() {
       if (allStrokes.length > 0) {
-        // 將所有筆劃合併成一個大陣列送出
-        // 為了讓大魚缸能跑，我們把筆劃串接在一起
         let combinedPath = [];
-        for(let s of allStrokes) { combinedPath = combinedPath.concat(s); }
+        for(let s of allStrokes) combinedPath = combinedPath.concat(s);
 
         fishRef.push({
           path: combinedPath,
-          color: `rgb(${floor(random(100,255))}, ${floor(random(50,150))}, ${floor(random(0,100))})`,
+          color: `rgb(${floor(random(100,255))}, ${floor(random(50,150))}, 50)`,
           timestamp: Date.now()
         });
         allStrokes = [];
-        alert("這條魚游進大魚缸囉！");
+        alert("魚兒游走囉！");
       }
     };
-
-    <button onclick="history.back()" style="position:fixed; top:10px; right:10px; padding:10px; background:#666; color:white; border:none; border-radius:5px; z-index:100; cursor:pointer;">
-  ↩ 回上一頁
-</button>
+    function windowResized() { resizeCanvas(windowWidth, windowHeight); }
   </script>
 </body>
 </html>
