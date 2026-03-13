@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
   <meta charset="UTF-8">
-  <title>三多魚缸 - 藝廊互動版</title>
+  <title>三多魚缸 - 物理碰撞藝廊版</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
@@ -87,14 +87,18 @@
       strokeWeight(margin); 
       rect(margin/2, margin/2, width - margin, height - margin, 10);
 
-      // 2. 繪製魚兒
+      // 2. 處理魚兒之間的碰撞邏輯
+      handleCollisions();
+
+      // 3. 繪製魚兒
       for (let i = 0; i < allFishes.length; i++) {
         let fish = allFishes[i], state = fishStates[i];
         state.offX += state.vx; 
         state.offY += state.vy;
 
-        if (state.offX < margin + 50 || state.offX > width - margin - 50) state.vx *= -1;
-        if (state.offY < margin + 50 || state.offY > height - margin - 50) state.vy *= -1;
+        // 邊界反彈
+        if (state.offX < margin + 80 || state.offX > width - margin - 80) state.vx *= -1;
+        if (state.offY < margin + 80 || state.offY > height - margin - 80) state.vy *= -1;
 
         push();
         translate(state.offX, state.offY);
@@ -104,14 +108,8 @@
 
         for (let s of fish.data.strokes) {
           let c = color(s.color);
-          
-          // 【核心修正：色彩判定邏輯】
-          // 只有當「紅、綠、藍」三色都非常高（接近純白）時，才轉為深灰色
-          if (red(c) > 240 && green(c) > 240 && blue(c) > 240) {
-            stroke(80); 
-          } else {
-            stroke(s.color);
-          }
+          if (red(c) > 240 && green(c) > 240 && blue(c) > 240) stroke(80); 
+          else stroke(s.color);
           
           strokeWeight(state.isScared ? 8 / fish.scale : 5 / fish.scale); 
           noFill();
@@ -122,11 +120,41 @@
         pop();
       }
       
-      // 3. 畫框裝飾陰影
+      // 4. 畫框裝飾陰影
       noFill();
       stroke(0, 0, 0, 30);
       strokeWeight(5);
       rect(margin/2, margin/2, width - margin, height - margin, 10);
+    }
+
+    function handleCollisions() {
+      for (let i = 0; i < fishStates.length; i++) {
+        for (let j = i + 1; j < fishStates.length; j++) {
+          let s1 = fishStates[i];
+          let s2 = fishStates[j];
+          
+          // 計算兩魚中心點距離
+          let d = dist(s1.offX, s1.offY, s2.offX, s2.offY);
+          let minDist = TARGET_SIZE * 0.8; // 碰撞門檻
+
+          if (d < minDist) {
+            // 發生碰撞！交換速度向量 (簡單彈開效果)
+            let tempVx = s1.vx;
+            let tempVy = s1.vy;
+            s1.vx = s2.vx;
+            s1.vy = s2.vy;
+            s2.vx = tempVx;
+            s2.vy = tempVy;
+            
+            // 防止魚兒卡在一起，稍微撐開一點
+            let angle = atan2(s2.offY - s1.offY, s2.offX - s1.offX);
+            s1.offX -= cos(angle) * 2;
+            s1.offY -= sin(angle) * 2;
+            s2.offX += cos(angle) * 2;
+            s2.offY += sin(angle) * 2;
+          }
+        }
+      }
     }
 
     function mousePressed() {
@@ -143,7 +171,8 @@
       let oldVx = state.vx; let oldVy = state.vy;
       state.vx *= 5; state.vy *= 5;
       setTimeout(() => {
-        state.vx = oldVx; state.vy = oldVy; state.isScared = false;
+        state.vx /= 5; state.vy /= 5; // 恢復成相對比例速度
+        state.isScared = false;
       }, 5000);
     }
 
