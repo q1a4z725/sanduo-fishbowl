@@ -3,24 +3,19 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>三多郵局教保中心 - 多人魚缸</title>
+  <title>三多魚缸 - 反彈遊動版</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
-  
   <style>
     body { margin: 0; padding: 0; overflow: hidden; background: #0a1e3c; }
-    #ui { position: absolute; top: 15px; left: 15px; color: white; font-family: "Microsoft JhengHei", sans-serif; pointer-events: none; text-shadow: 1px 1px 2px black; }
+    #ui { position: absolute; top: 15px; left: 15px; color: white; font-family: sans-serif; pointer-events: none; z-index: 10; }
   </style>
 </head>
 <body>
-  <div id="ui">
-    <h2>🎨 多人互動魚缸</h2>
-    <p>按住滑鼠畫一條魚，放開後牠就會游入大家的魚缸！</p>
-  </div>
+  <div id="ui"><h2>🎨 三多互動魚缸</h2><p>畫一條魚，牠會在地平線內來回遊動！</p></div>
 
   <script>
-    // --- 1. 你的專屬 Firebase 配置 (已根據截圖填入) ---
     const firebaseConfig = {
       apiKey: "AIzaSyBQvX-H_SmO44BVecOOEjghfBrlycbvh4s",
       authDomain: "sanduo-fish.firebaseapp.com",
@@ -36,30 +31,31 @@
     const database = firebase.database();
     const fishRef = database.ref('fishes');
 
-    // --- 2. 邏輯程式碼 ---
     let myPath = [];
     let allFishes = [];
-    const MAX_FISH = 30; 
+    let fishPositions = []; // 用來追蹤每條魚的即時位置
 
     function setup() {
       createCanvas(windowWidth, windowHeight);
-      
-      // 監聽雲端資料庫
-      fishRef.limitToLast(MAX_FISH).on('child_added', (snapshot) => {
-        allFishes.push(snapshot.val());
-        if (allFishes.length > MAX_FISH) allFishes.shift();
+      fishRef.limitToLast(20).on('child_added', (snapshot) => {
+        let newFish = snapshot.val();
+        allFishes.push(newFish);
+        // 初始化這條魚的動態資料
+        fishPositions.push({
+          offX: 0, offY: 0,
+          vx: random(-2, 2), 
+          vy: random(-1, 1)
+        });
       });
     }
 
     function draw() {
       background(10, 30, 60);
 
-      // 畫出所有人的魚
       for (let i = 0; i < allFishes.length; i++) {
-      drawFish(allFishes[i], i);
+        updateAndDrawFish(allFishes[i], i);
       }
 
-      // 畫出正在畫的線
       if (mouseIsPressed) {
         stroke(255, 255, 0);
         strokeWeight(4);
@@ -71,69 +67,55 @@
       }
     }
 
+    function updateAndDrawFish(fish, idx) {
+      let pos = fishPositions[idx];
+      if (!pos) return;
+
+      // 1. 更新位移 (修正後的算式)
+      pos.offX += pos.vx;
+      pos.offY += pos.vy;
+
+      // 2. 邊界判定 (檢查魚的頭部座標加上位移後是否撞牆)
+      let headX = fish.path[0].x + pos.offX;
+      let headY = fish.path[0].y + pos.offY;
+
+      if (headX < 0 || headX > width) pos.vx *= -1;
+      if (headY < 0 || headY > height) pos.vy *= -1;
+
+      // 3. 繪製
+      push();
+      translate(pos.offX, pos.offY);
+      
+      // 自動轉向：往左游時水平翻轉
+      if (pos.vx < 0) {
+        translate(fish.path[0].x * 2, 0);
+        scale(-1, 1);
+      }
+
+      stroke(fish.color);
+      strokeWeight(3);
+      noFill();
+      beginShape();
+      for (let i = 0; i < fish.path.length; i++) {
+        let swing = sin(frameCount * 0.1 + i * 0.3) * (i * 0.2);
+        vertex(fish.path[i].x + swing, fish.path[i].y + swing * 0.3);
+      }
+      endShape();
+      pop();
+    }
+
     function mouseReleased() {
       if (myPath.length > 5) {
-        let fishColor = `rgb(${floor(random(100,255))}, ${floor(random(100,255))}, ${floor(random(100,255))})`;
         fishRef.push({
           path: myPath,
-          color: fishColor,
+          color: `rgb(${floor(random(100,255))}, ${floor(random(100,255))}, ${floor(random(100,255))})`,
           timestamp: Date.now()
         });
       }
       myPath = [];
     }
 
-    // 在 draw() 之外定義一個物件來儲存每條魚的即時位置
-let fishPositions = {};
-
-function drawFish(fish, id) {
-  // 1. 初始化位置 (如果這條魚還沒有在畫面上移動過)
-  if (!fishPositions[id]) {
-    fishPositions[id] = {
-      x: fish.path[0].x,
-      y: fish.path[0].y,
-      vx: random(-2, 2), // 左右速度
-      vy: random(-1, 1), // 上下速度
-    };
-  }
-
-  let p = fishPositions[id];
-
-  // 2. 更新位置
-  p.x += p.x + p.vx;
-  p.y += p.y + p.vy;
-
-  // 3. 邊界檢查 (撞牆反彈)
-  if (p.x < 0 || p.x > width) p.vx *= -1;
-  if (p.y < 0 || p.y > height) p.vy *= -1;
-
-  // 4. 繪製魚
-  push();
-  // 將畫布中心移到魚的位置
-  translate(p.x - fish.path[0].x, p.y - fish.path[0].y);
-  
-  // 根據前進方向旋轉魚的身軀 (選配，讓魚看起來更自然)
-  if (p.vx < 0) { 
-    // 如果往左游，水平翻轉
-    translate(fish.path[0].x * 2, 0);
-    scale(-1, 1);
-  }
-
-  stroke(fish.color);
-  strokeWeight(3);
-  noFill();
-  beginShape();
-  for (let i = 0; i < fish.path.length; i++) {
-    let swing = sin(frameCount * 0.1 + i * 0.3) * (i * 0.2);
-    vertex(fish.path[i].x + swing, fish.path[i].y + swing * 0.3);
-  }
-  endShape();
-  pop();
-}
-
-
     function windowResized() { resizeCanvas(windowWidth, windowHeight); }
   </script>
 </body>
-
 </html>
