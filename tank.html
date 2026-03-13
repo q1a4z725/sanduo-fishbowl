@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
   <meta charset="UTF-8">
-  <title>三多魚缸 - 互動藝廊版</title>
+  <title>三多魚缸 - 藝廊互動版</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
@@ -12,9 +12,20 @@
       background-color: #e0e0e0; 
       display: flex; justify-content: center; align-items: center; height: 100vh;
     }
+    #nav { position: fixed; top: 10px; left: 10px; z-index: 9999; }
+    #nav button { 
+      padding: 10px 15px; background: rgba(0, 0, 0, 0.3); color: white; 
+      border: 1px solid rgba(255, 255, 255, 0.5); border-radius: 5px; 
+      cursor: pointer; font-size: 14px; transition: 0.3s;
+    }
+    #nav button:hover { background: rgba(0, 0, 0, 0.8); }
   </style>
 </head>
 <body>
+  <div id="nav">
+    <button onclick="location.href='index.html'">🏠 離開魚缸</button>
+  </div>
+
   <script>
     const firebaseConfig = {
       apiKey: "AIzaSyBQvX-H_SmO44BVecOOEjghfBrlycbvh4s",
@@ -57,7 +68,6 @@
           centerY: (minY + maxY) / 2
         });
 
-        // 初始狀態：包含位置、速度、是否被嚇到
         fishStates.push({ 
           offX: random(margin + 100, width - margin - 100), 
           offY: random(margin + 100, height - margin - 100), 
@@ -71,7 +81,7 @@
     function draw() {
       background(230); 
 
-      // 1. 畫出大畫框底色
+      // 1. 畫出大畫框底色與框
       fill(250, 248, 240); 
       stroke(100, 80, 60); 
       strokeWeight(margin); 
@@ -80,29 +90,29 @@
       // 2. 繪製魚兒
       for (let i = 0; i < allFishes.length; i++) {
         let fish = allFishes[i], state = fishStates[i];
-        
-        // 移動邏輯
         state.offX += state.vx; 
         state.offY += state.vy;
 
-        // 邊界反彈
         if (state.offX < margin + 50 || state.offX > width - margin - 50) state.vx *= -1;
         if (state.offY < margin + 50 || state.offY > height - margin - 50) state.vy *= -1;
 
         push();
         translate(state.offX, state.offY);
-        
-        // 畫魚
         if (state.vx < 0) scale(-1, 1);
         scale(fish.scale);
         translate(-fish.centerX, -fish.centerY);
 
         for (let s of fish.data.strokes) {
           let c = color(s.color);
-          if (brightness(c) > 95) stroke(80); 
-          else stroke(s.color);
           
-          // 如果被嚇到，線條稍微加粗一點點
+          // 【核心修正：色彩判定邏輯】
+          // 只有當「紅、綠、藍」三色都非常高（接近純白）時，才轉為深灰色
+          if (red(c) > 240 && green(c) > 240 && blue(c) > 240) {
+            stroke(80); 
+          } else {
+            stroke(s.color);
+          }
+          
           strokeWeight(state.isScared ? 8 / fish.scale : 5 / fish.scale); 
           noFill();
           beginShape();
@@ -112,44 +122,28 @@
         pop();
       }
       
-      // 3. 畫框裝飾線
+      // 3. 畫框裝飾陰影
       noFill();
       stroke(0, 0, 0, 30);
       strokeWeight(5);
       rect(margin/2, margin/2, width - margin, height - margin, 10);
     }
 
-    // 點擊偵測邏輯
     function mousePressed() {
       for (let i = 0; i < allFishes.length; i++) {
         let state = fishStates[i];
-        // 計算點擊位置與魚中心的距離
         let d = dist(mouseX, mouseY, state.offX, state.offY);
-        
-        // 如果點到魚 (距離小於魚大小的一半) 且魚還沒被嚇到
-        if (d < TARGET_SIZE / 2 && !state.isScared) {
-          scareFish(i);
-        }
+        if (d < TARGET_SIZE / 2 && !state.isScared) scareFish(i);
       }
     }
 
     function scareFish(index) {
       let state = fishStates[index];
       state.isScared = true;
-      
-      // 備份原始速度
-      let oldVx = state.vx;
-      let oldVy = state.vy;
-      
-      // 速度翻倍 (快速跑走)
-      state.vx *= 5;
-      state.vy *= 5;
-      
-      // 5秒後恢復
+      let oldVx = state.vx; let oldVy = state.vy;
+      state.vx *= 5; state.vy *= 5;
       setTimeout(() => {
-        state.vx = oldVx;
-        state.vy = oldVy;
-        state.isScared = false;
+        state.vx = oldVx; state.vy = oldVy; state.isScared = false;
       }, 5000);
     }
 
