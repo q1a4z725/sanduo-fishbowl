@@ -3,13 +3,16 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>畫魚室(修正版) - 三多郵局教保中心</title>
+  <title>彩色畫魚室 - 三多郵局教保中心</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
   <style>
     body { margin: 0; padding: 0; overflow: hidden; background: #ffffff; touch-action: none; }
     #ui { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); display: flex; gap: 10px; z-index: 100; }
+    #palette { position: fixed; top: 15px; left: 50%; transform: translateX(-50%); display: flex; gap: 15px; background: rgba(255,255,255,0.8); padding: 10px; border-radius: 50px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); z-index: 100; }
+    .color-btn { width: 35px; height: 35px; border-radius: 50%; border: 2px solid white; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+    .color-btn.active { border: 3px solid #333; transform: scale(1.1); }
     #nav { position: fixed; top: 15px; left: 15px; z-index: 100; }
     button { padding: 12px 20px; font-size: 18px; border: none; border-radius: 50px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
     .btn-home { background: #607d8b; color: white; }
@@ -19,10 +22,20 @@
 </head>
 <body>
   <div id="nav">
-    <button class="btn-home" onclick="location.href='index.html'">🏠 回選單</button>
+    <button class="btn-home" onclick="location.href='index.html'">🏠</button>
   </div>
+
+  <div id="palette">
+    <div class="color-btn active" style="background: #0066cc;" onclick="changeColor('#0066cc', this)"></div>
+    <div class="color-btn" style="background: #ff4444;" onclick="changeColor('#ff4444', this)"></div>
+    <div class="color-btn" style="background: #ffbb00;" onclick="changeColor('#ffbb00', this)"></div>
+    <div class="color-btn" style="background: #44bb44;" onclick="changeColor('#44bb44', this)"></div>
+    <div class="color-btn" style="background: #9933cc;" onclick="changeColor('#9933cc', this)"></div>
+    <div class="color-btn" style="background: #333333;" onclick="changeColor('#333333', this)"></div>
+  </div>
+
   <div id="ui">
-    <button class="btn-clear" id="clearBtn">重畫</button>
+    <button class="btn-clear" id="clearBtn">全部重畫</button>
     <button class="btn-send" id="sendBtn">畫好了！送出 ➔</button>
   </div>
 
@@ -42,37 +55,51 @@
 
     let allStrokes = []; 
     let currentStroke = [];
+    let currentColor = '#0066cc';
 
     function setup() {
       createCanvas(windowWidth, windowHeight);
     }
 
+    function changeColor(c, el) {
+      currentColor = c;
+      let btns = document.querySelectorAll('.color-btn');
+      btns.forEach(b => b.classList.remove('active'));
+      el.classList.add('active');
+    }
+
     function draw() {
       background(255);
-      stroke(0, 102, 204);
-      strokeWeight(5);
-      noFill();
-
-      // 畫出舊的筆劃
+      
+      // 畫出舊的筆劃 (每筆使用自己的顏色)
       for (let s of allStrokes) {
+        stroke(s.color);
+        strokeWeight(5);
+        noFill();
         beginShape();
-        for (let p of s) vertex(p.x, p.y);
+        for (let p of s.points) vertex(p.x, p.y);
         endShape();
       }
 
-      // 畫出現在這一筆
-      if (mouseIsPressed && mouseY < height - 80) { // 限制：如果太靠近底部按鈕區，就不畫
+      // 畫出正在畫的這一筆
+      if (mouseIsPressed && mouseY < height - 80 && mouseY > 80) {
         currentStroke.push({x: mouseX, y: mouseY});
+        stroke(currentColor);
+        strokeWeight(5);
+        noFill();
         beginShape();
         for (let p of currentStroke) vertex(p.x, p.y);
         endShape();
       }
     }
 
-    // 只有在滑鼠放開且不是在按鈕上時，才存入筆劃
     function mouseReleased() {
-      if (currentStroke.length > 2 && mouseY < height - 80) {
-        allStrokes.push(currentStroke);
+      if (currentStroke.length > 2) {
+        // 存入點位與當前顏色
+        allStrokes.push({
+          points: currentStroke,
+          color: currentColor
+        });
       }
       currentStroke = [];
     }
@@ -81,16 +108,13 @@
 
     document.getElementById('sendBtn').onclick = function() {
       if (allStrokes.length > 0) {
-        let combinedPath = [];
-        for(let s of allStrokes) combinedPath = combinedPath.concat(s);
-
+        // 上傳整條魚的資料
         fishRef.push({
-          path: combinedPath,
-          color: `rgb(${floor(random(100,255))}, ${floor(random(50,150))}, 50)`,
+          strokes: allStrokes,
           timestamp: Date.now()
         });
         allStrokes = [];
-        alert("魚兒游走囉！");
+        alert("彩色魚游走囉！");
       }
     };
     function windowResized() { resizeCanvas(windowWidth, windowHeight); }
