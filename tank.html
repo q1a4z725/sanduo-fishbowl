@@ -2,20 +2,15 @@
 <html lang="zh-TW">
 <head>
   <meta charset="UTF-8">
-  <title>三多魚缸 - 大畫框藝廊版</title>
+  <title>三多魚缸 - 互動藝廊版</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
   <style>
     body { 
-      margin: 0; 
-      padding: 0; 
-      overflow: hidden; 
-      background-color: #e0e0e0; /* 牆壁顏色：淺灰色 */
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
+      margin: 0; padding: 0; overflow: hidden; 
+      background-color: #e0e0e0; 
+      display: flex; justify-content: center; align-items: center; height: 100vh;
     }
   </style>
 </head>
@@ -34,9 +29,9 @@
     const fishRef = firebase.database().ref('fishes');
 
     let allFishes = [];
-    let fishPositions = [];
-    const TARGET_SIZE = 180; // 約 5cm
-    const margin = 60; // 邊框的厚度
+    let fishStates = [];
+    const TARGET_SIZE = 180; 
+    const margin = 60; 
 
     function setup() {
       createCanvas(windowWidth, windowHeight);
@@ -61,55 +56,54 @@
           centerX: (minX + maxX) / 2,
           centerY: (minY + maxY) / 2
         });
-        // 初始位置設定在框框內
-        fishPositions.push({ 
+
+        // 初始狀態：包含位置、速度、是否被嚇到
+        fishStates.push({ 
           offX: random(margin + 100, width - margin - 100), 
           offY: random(margin + 100, height - margin - 100), 
           vx: random(-1.2, 1.2), 
-          vy: random(-0.6, 0.6) 
+          vy: random(-0.6, 0.6),
+          isScared: false
         });
       });
     }
 
     function draw() {
-      // 1. 畫出背景 (模擬牆面)
       background(230); 
 
-      // 2. 畫出「大畫框」內部的畫布區域
-      fill(250, 248, 240); // 畫布顏色：溫潤米白
-      stroke(100, 80, 60); // 畫框顏色：深木頭色
-      strokeWeight(margin); // 邊框寬度
+      // 1. 畫出大畫框底色
+      fill(250, 248, 240); 
+      stroke(100, 80, 60); 
+      strokeWeight(margin); 
       rect(margin/2, margin/2, width - margin, height - margin, 10);
 
-      // 3. 繪製魚兒 (限制在框內游動)
+      // 2. 繪製魚兒
       for (let i = 0; i < allFishes.length; i++) {
-        let fish = allFishes[i], pos = fishPositions[i];
-        pos.offX += pos.vx; pos.offY += pos.vy;
+        let fish = allFishes[i], state = fishStates[i];
+        
+        // 移動邏輯
+        state.offX += state.vx; 
+        state.offY += state.vy;
 
-        // --- 碰撞偵測 (碰到大畫框邊界就反彈) ---
-        // 左右反彈
-        if (pos.offX < margin + 50 || pos.offX > width - margin - 50) {
-          pos.vx *= -1;
-        }
-        // 上下反彈
-        if (pos.offY < margin + 50 || pos.offY > height - margin - 50) {
-          pos.vy *= -1;
-        }
+        // 邊界反彈
+        if (state.offX < margin + 50 || state.offX > width - margin - 50) state.vx *= -1;
+        if (state.offY < margin + 50 || state.offY > height - margin - 50) state.vy *= -1;
 
         push();
-        translate(pos.offX, pos.offY);
+        translate(state.offX, state.offY);
         
-        if (pos.vx < 0) scale(-1, 1);
+        // 畫魚
+        if (state.vx < 0) scale(-1, 1);
         scale(fish.scale);
         translate(-fish.centerX, -fish.centerY);
 
         for (let s of fish.data.strokes) {
-          // 防呆：太淺的顏色轉深，避免在米白畫布上看不見
           let c = color(s.color);
           if (brightness(c) > 95) stroke(80); 
           else stroke(s.color);
           
-          strokeWeight(5 / fish.scale); 
+          // 如果被嚇到，線條稍微加粗一點點
+          strokeWeight(state.isScared ? 8 / fish.scale : 5 / fish.scale); 
           noFill();
           beginShape();
           for (let p of s.points) vertex(p.x, p.y);
@@ -118,11 +112,45 @@
         pop();
       }
       
-      // 4. 裝飾：在畫框邊角加一點陰影感
+      // 3. 畫框裝飾線
       noFill();
       stroke(0, 0, 0, 30);
       strokeWeight(5);
       rect(margin/2, margin/2, width - margin, height - margin, 10);
+    }
+
+    // 點擊偵測邏輯
+    function mousePressed() {
+      for (let i = 0; i < allFishes.length; i++) {
+        let state = fishStates[i];
+        // 計算點擊位置與魚中心的距離
+        let d = dist(mouseX, mouseY, state.offX, state.offY);
+        
+        // 如果點到魚 (距離小於魚大小的一半) 且魚還沒被嚇到
+        if (d < TARGET_SIZE / 2 && !state.isScared) {
+          scareFish(i);
+        }
+      }
+    }
+
+    function scareFish(index) {
+      let state = fishStates[index];
+      state.isScared = true;
+      
+      // 備份原始速度
+      let oldVx = state.vx;
+      let oldVy = state.vy;
+      
+      // 速度翻倍 (快速跑走)
+      state.vx *= 5;
+      state.vy *= 5;
+      
+      // 5秒後恢復
+      setTimeout(() => {
+        state.vx = oldVx;
+        state.vy = oldVy;
+        state.isScared = false;
+      }, 5000);
     }
 
     function windowResized() { resizeCanvas(windowWidth, windowHeight); }
