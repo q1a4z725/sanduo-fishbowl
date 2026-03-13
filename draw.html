@@ -8,38 +8,15 @@
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
   <style>
-    body { margin: 0; padding: 0; overflow: hidden; background: #ffffff; touch-action: none; -webkit-user-select: none; }
-    #ui-container { position: fixed; width: 100%; height: 100%; pointer-events: none; z-index: 100; }
-    #palette { position: absolute; top: 15px; left: 50%; transform: translateX(-50%); display: flex; gap: 12px; background: rgba(255,255,255,0.9); padding: 10px 20px; border-radius: 50px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); pointer-events: auto; }
-    .color-btn { width: 30px; height: 30px; border-radius: 50%; border: 3px solid white; cursor: pointer; }
-    .color-btn.active { transform: scale(1.2); border: 3px solid #333; }
-    #controls { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); display: flex; gap: 10px; pointer-events: auto; }
-    #nav { position: absolute; top: 15px; left: 15px; pointer-events: auto; }
-    button { padding: 10px 18px; font-size: 16px; border: none; border-radius: 50px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); font-weight: bold; }
-    .btn-home { background: #607d8b; color: white; }
-    .btn-clear { background: #f44336; color: white; }
-    .btn-send { background: #4CAF50; color: white; }
+    body { margin: 0; padding: 0; overflow: hidden; background: #ffffff; touch-action: none; }
+    #homeBtn { position: fixed; top: 10px; left: 10px; z-index: 1000; padding: 10px; background: #607d8b; color: white; border: none; border-radius: 5px; cursor: pointer; }
   </style>
 </head>
 <body>
-
-  <div id="ui-container">
-    <div id="nav"><button class="btn-home" onclick="location.href='index.html'">🏠</button></div>
-    <div id="palette">
-      <div class="color-btn active" style="background: #0066cc;" onclick="changeColor('#0066cc', this)"></div>
-      <div class="color-btn" style="background: #ff4444;" onclick="changeColor('#ff4444', this)"></div>
-      <div class="color-btn" style="background: #ffbb00;" onclick="changeColor('#ffbb00', this)"></div>
-      <div class="color-btn" style="background: #44bb44;" onclick="changeColor('#44bb44', this)"></div>
-      <div class="color-btn" style="background: #9933cc;" onclick="changeColor('#9933cc', this)"></div>
-      <div class="color-btn" style="background: #333333;" onclick="changeColor('#333333', this)"></div>
-    </div>
-    <div id="controls">
-      <button class="btn-clear" id="clearBtn">重畫</button>
-      <button class="btn-send" id="sendBtn">畫好了！送出 ➔</button>
-    </div>
-  </div>
+  <button id="homeBtn" onclick="location.href='index.html'">🏠 回選單</button>
 
   <script>
+    // --- Firebase 配置 ---
     const firebaseConfig = {
       apiKey: "AIzaSyBQvX-H_SmO44BVecOOEjghfBrlycbvh4s",
       authDomain: "sanduo-fish.firebaseapp.com",
@@ -54,50 +31,97 @@
 
     let allStrokes = []; 
     let currentStroke = [];
+    let colors = ['#0066cc', '#ff4444', '#ffbb00', '#44bb44', '#9933cc', '#333333'];
     let currentColor = '#0066cc';
     let isDrawing = false;
 
     function setup() {
-      let canvas = createCanvas(windowWidth, windowHeight);
-      canvas.mousePressed(startStroke);
+      createCanvas(windowWidth, windowHeight);
     }
 
-    function changeColor(c, el) {
-      currentColor = c;
-      document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('active'));
-      el.classList.add('active');
+    function draw() {
+      background(255);
+      
+      // 1. 畫出調色盤 (畫在畫布上，避免 HTML 阻擋)
+      noStroke();
+      for (let i = 0; i < colors.length; i++) {
+        fill(colors[i]);
+        ellipse(width / 2 - 125 + i * 50, 40, 40, 40);
+        if (currentColor === colors[i]) {
+          noFill();
+          stroke(0);
+          strokeWeight(3);
+          ellipse(width / 2 - 125 + i * 50, 40, 45, 45);
+        }
+      }
+
+      // 2. 畫出按鈕 (重畫與送出)
+      fill(244, 67, 54); // 紅色
+      rect(width / 2 - 110, height - 60, 100, 40, 20);
+      fill(76, 175, 80); // 綠色
+      rect(width / 2 + 10, height - 60, 100, 40, 20);
+      
+      fill(255);
+      textAlign(CENTER, CENTER);
+      textSize(16);
+      text("全部重畫", width / 2 - 60, height - 40);
+      text("畫好送出", width / 2 + 60, height - 40);
+
+      // 3. 畫出筆劃
+      noFill();
+      for (let s of allStrokes) {
+        stroke(s.color);
+        strokeWeight(6);
+        beginShape();
+        for (let p of s.points) vertex(p.x, p.y);
+        endShape();
+      }
+
+      if (isDrawing) {
+        stroke(currentColor);
+        strokeWeight(6);
+        beginShape();
+        for (let p of currentStroke) vertex(p.x, p.y);
+        endShape();
+      }
     }
 
-    function startStroke() {
-      // 只有點擊畫布空白處才開始畫，避開 UI 區
+    function mousePressed() {
+      // 點擊調色盤
+      for (let i = 0; i < colors.length; i++) {
+        let d = dist(mouseX, mouseY, width / 2 - 125 + i * 50, 40);
+        if (d < 25) {
+          currentColor = colors[i];
+          return;
+        }
+      }
+
+      // 點擊重畫按鈕
+      if (mouseX > width/2 - 110 && mouseX < width/2 - 10 && mouseY > height - 60 && mouseY < height - 20) {
+        allStrokes = [];
+        return;
+      }
+
+      // 點擊送出按鈕
+      if (mouseX > width/2 + 10 && mouseX < width/2 + 110 && mouseY > height - 60 && mouseY < height - 20) {
+        if (allStrokes.length > 0) {
+          fishRef.push({ strokes: allStrokes, timestamp: Date.now() });
+          allStrokes = [];
+          alert("魚兒游走囉！");
+        }
+        return;
+      }
+
+      // 畫畫區域判定
       if (mouseY > 80 && mouseY < height - 80) {
         isDrawing = true;
         currentStroke = [];
       }
     }
 
-    function draw() {
-      background(255);
-      
-      // 畫出已完成筆劃
-      for (let s of allStrokes) {
-        stroke(s.color);
-        strokeWeight(6);
-        noFill();
-        beginShape();
-        for (let p of s.points) vertex(p.x, p.y);
-        endShape();
-      }
-
-      // 畫出當前筆劃
-      if (isDrawing && mouseIsPressed) {
+    function mouseDragged() {
+      if (isDrawing) {
         currentStroke.push({x: mouseX, y: mouseY});
-        stroke(currentColor);
-        strokeWeight(6);
-        noFill();
-        beginShape();
-        for (let p of currentStroke) vertex(p.x, p.y);
-        endShape();
       }
     }
 
@@ -108,16 +132,6 @@
       isDrawing = false;
       currentStroke = [];
     }
-
-    document.getElementById('clearBtn').onclick = (e) => { allStrokes = []; e.stopPropagation(); };
-    document.getElementById('sendBtn').onclick = (e) => {
-      if (allStrokes.length > 0) {
-        fishRef.push({ strokes: allStrokes, timestamp: Date.now() });
-        allStrokes = [];
-        alert("魚兒游走囉！");
-      }
-      e.stopPropagation();
-    };
 
     function windowResized() { resizeCanvas(windowWidth, windowHeight); }
   </script>
