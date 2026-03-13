@@ -9,15 +9,9 @@
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
   <style>
     body { margin: 0; padding: 0; overflow: hidden; background: #ffffff; touch-action: none; -webkit-user-select: none; }
-    #nameInput { 
-      position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);
-      padding: 10px; font-size: 18px; border: 2px solid #ddd; border-radius: 10px;
-      width: 200px; text-align: center;
-    }
   </style>
 </head>
 <body>
-  <input type="text" id="nameInput" placeholder="請輸入名字" maxlength="10">
 
   <script>
     const firebaseConfig = {
@@ -37,15 +31,34 @@
     let colors = ['#0066cc', '#ff4444', '#ffbb00', '#44bb44', '#9933cc', '#333333'];
     let selectedIndex = 0; 
     let isDrawing = false;
+    let nameInput; // p5.js 內建輸入元件
 
     function setup() {
       createCanvas(windowWidth, windowHeight);
+      
+      // 使用 p5.js 內建方法建立輸入框，這在觸控裝置上更穩定
+      nameInput = createInput('');
+      nameInput.attribute('placeholder', '請打名字');
+      nameInput.attribute('maxlength', '10');
+      nameInput.style('font-size', '18px');
+      nameInput.style('padding', '8px');
+      nameInput.style('text-align', 'center');
+      nameInput.style('border', '2px solid #ddd');
+      nameInput.style('border-radius', '10px');
+      
+      repositionUI();
+    }
+
+    function repositionUI() {
+      // 動態計算輸入框位置，確保它在按鈕上方
+      nameInput.position(width / 2 - 85, height - 120);
+      nameInput.size(160);
     }
 
     function draw() {
       background(255);
       
-      // 1. 調色盤
+      // 1. 調色盤 (上方)
       for (let i = 0; i < colors.length; i++) {
         let x = width / 2 - 125 + i * 50;
         let y = 45;
@@ -64,16 +77,18 @@
       let btnW = 95;
       let btnH = 45;
 
-      fill(96, 125, 139); rect(width / 2 - 155, btnY, btnW, btnH, 25); // 回選單
-      fill(244, 67, 54); rect(width / 2 - 47, btnY, btnW, btnH, 25);  // 全部重畫
-      fill(76, 175, 80); rect(width / 2 + 60, btnY, btnW, btnH, 25);  // 畫好送出
+      // 按鈕背景
+      fill(96, 125, 139); rect(width / 2 - 155, btnY, btnW, btnH, 25);
+      fill(244, 67, 54); rect(width / 2 - 47, btnY, btnW, btnH, 25);
+      fill(76, 175, 80); rect(width / 2 + 60, btnY, btnW, btnH, 25);
       
+      // 按鈕文字
       fill(255); textAlign(CENTER, CENTER); textSize(15);
       text("🏠 回選單", width / 2 - 107, btnY + 23);
       text("全部重畫", width / 2, btnY + 23);
       text("畫好送出", width / 2 + 107, btnY + 23);
 
-      // 3. 畫出畫作
+      // 3. 繪製畫作
       noFill();
       for (let s of allStrokes) {
         stroke(s.color); strokeWeight(6);
@@ -89,37 +104,67 @@
       }
     }
 
-    function touchStarted() {
+    // 使用 mousePressed 作為通用觸發，解決 touchStarted 在某些瀏覽器按不到的問題
+    function mousePressed() {
       // 點擊調色盤
       for (let i = 0; i < colors.length; i++) {
         let x = width / 2 - 125 + i * 50;
         if (dist(mouseX, mouseY, x, 45) < 25) {
-          selectedIndex = i; return false;
+          selectedIndex = i; return;
         }
       }
-      // 點擊按鈕
+
+      // 點擊按鈕 (明確偵測範圍)
       if (mouseY > height - 70) {
-        if (mouseX > width/2 - 155 && mouseX < width/2 - 60) { location.href = 'index.html'; } 
-        else if (mouseX > width/2 - 47 && mouseX < width/2 + 48) { allStrokes = []; } 
+        // 回選單
+        if (mouseX > width/2 - 155 && mouseX < width/2 - 60) { 
+          window.location.href = 'index.html'; 
+        } 
+        // 全部重畫
+        else if (mouseX > width/2 - 47 && mouseX < width/2 + 48) { 
+          allStrokes = []; 
+        } 
+        // 送出
         else if (mouseX > width/2 + 60 && mouseX < width/2 + 155) {
-          let name = document.getElementById('nameInput').value || "小畫家";
+          let name = nameInput.value() || "小畫家";
           if (allStrokes.length > 0) {
-            fishRef.push({ strokes: allStrokes, owner: name, timestamp: Date.now() });
+            fishRef.push({ 
+              strokes: allStrokes, 
+              owner: name, 
+              timestamp: Date.now() 
+            });
             allStrokes = [];
-            document.getElementById('nameInput').value = ""; // 送出後清空名字
+            nameInput.value(""); // 清空
             alert(name + " 的魚游走囉！");
           }
         }
-        return false;
+        return;
       }
+
+      // 繪圖區域判定 (避開 UI)
       if (mouseY > 90 && mouseY < height - 130) {
-        isDrawing = true; currentStroke = [];
+        isDrawing = true;
+        currentStroke = [];
       }
-      return false;
     }
-    function touchMoved() { if (isDrawing) currentStroke.push({x: mouseX, y: mouseY}); return false; }
-    function touchEnded() { if (isDrawing && currentStroke.length > 2) allStrokes.push({ points: currentStroke, color: colors[selectedIndex] }); isDrawing = false; return false; }
-    function windowResized() { resizeCanvas(windowWidth, windowHeight); }
+
+    function mouseDragged() {
+      if (isDrawing) {
+        currentStroke.push({x: mouseX, y: mouseY});
+      }
+    }
+
+    function mouseReleased() {
+      if (isDrawing && currentStroke.length > 2) {
+        allStrokes.push({ points: currentStroke, color: colors[selectedIndex] });
+      }
+      isDrawing = false;
+    }
+
+    function windowResized() {
+      resizeCanvas(windowWidth, windowHeight);
+      repositionUI();
+    }
   </script>
 </body>
 </html>
