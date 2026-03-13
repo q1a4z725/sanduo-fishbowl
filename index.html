@@ -1,7 +1,21 @@
-<body style="background:#001b33; color:white; text-align:center; padding:50px; font-family:sans-serif;">
-  <h1>三多魚缸管理系統</h1>
-  <br>
-  <a href="draw.html" style="color:yellow; font-size:30px;">➔ 我要畫魚 (給平板用)</a>
-  <br><br><br>
-  <a href="tank.html" style="color:cyan; font-size:30px;">➔ 觀看魚缸 (給大螢幕用)</a>
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>三多魚缸系統 - 主選單</title>
+  <style>
+    body { margin: 0; padding: 0; background: #001b33; color: white; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; }
+    h1 { margin-bottom: 50px; font-size: 2.5rem; text-shadow: 2px 2px 5px rgba(0,0,0,0.5); }
+    .menu-btn { width: 280px; padding: 25px; margin: 15px; font-size: 1.5rem; border: none; border-radius: 15px; cursor: pointer; text-decoration: none; text-align: center; transition: 0.3s; }
+    .draw-link { background: #ff9800; color: white; }
+    .tank-link { background: #00bcd4; color: white; }
+    .menu-btn:hover { transform: scale(1.05); opacity: 0.9; }
+  </style>
+</head>
+<body>
+  <h1>🎨 三多互動魚缸系統</h1>
+  <a href="draw.html" class="menu-btn draw-link">➔ 我要畫魚 (給平板)</a>
+  <a href="tank.html" class="menu-btn tank-link">➔ 進入魚缸 (大螢幕)</a>
 </body>
+</html>
