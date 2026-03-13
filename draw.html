@@ -8,7 +8,7 @@
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
   <style>
-    body { margin: 0; padding: 0; overflow: hidden; background: #ffffff; touch-action: none; }
+    body { margin: 0; padding: 0; overflow: hidden; background: #ffffff; touch-action: none; -webkit-user-select: none; }
     #homeBtn { position: fixed; top: 10px; left: 10px; z-index: 1000; padding: 10px; background: #607d8b; color: white; border: none; border-radius: 5px; cursor: pointer; }
   </style>
 </head>
@@ -30,9 +30,8 @@
 
     let allStrokes = []; 
     let currentStroke = [];
-    // 統一使用小寫 hex code 避免判斷錯誤
     let colors = ['#0066cc', '#ff4444', '#ffbb00', '#44bb44', '#9933cc', '#333333'];
-    let selectedIndex = 0; // 改用「索引值」來判斷選中哪一個，最準確
+    let selectedIndex = 0; 
     let isDrawing = false;
 
     function setup() {
@@ -42,49 +41,43 @@
     function draw() {
       background(255);
       
-      // 1. 畫出調色盤
-      noStroke();
+      // 1. 畫出調色盤 (修正外框殘留問題)
       for (let i = 0; i < colors.length; i++) {
-        fill(colors[i]);
         let x = width / 2 - 125 + i * 50;
         let y = 45;
+
+        noStroke(); // 每一圈開始前先強制關閉外框
+        fill(colors[i]);
         ellipse(x, y, 40, 40);
         
-        // 只有當索引值完全符合時，才畫出選中外框
         if (selectedIndex === i) {
           noFill();
-          stroke(80); // 灰黑色外圈
+          stroke(80); 
           strokeWeight(3);
           ellipse(x, y, 48, 48);
+          noStroke(); // 畫完選中框立刻關閉，避免傳給下一圈
         }
       }
 
-      // 2. 畫出重畫與送出按鈕
+      // 2. 畫出按鈕
       noStroke();
-      fill(244, 67, 54); 
-      rect(width / 2 - 110, height - 65, 100, 45, 25);
-      fill(76, 175, 80); 
-      rect(width / 2 + 10, height - 65, 100, 45, 25);
-      
-      fill(255);
-      textAlign(CENTER, CENTER);
-      textSize(16);
+      fill(244, 67, 54); rect(width / 2 - 110, height - 65, 100, 45, 25);
+      fill(76, 175, 80); rect(width / 2 + 10, height - 65, 100, 45, 25);
+      fill(255); textAlign(CENTER, CENTER); textSize(16);
       text("全部重畫", width / 2 - 60, height - 42);
       text("畫好送出", width / 2 + 60, height - 42);
 
-      // 3. 畫出筆劃
+      // 3. 畫出作品
       noFill();
       for (let s of allStrokes) {
-        stroke(s.color);
-        strokeWeight(6);
+        stroke(s.color); strokeWeight(6);
         beginShape();
         for (let p of s.points) vertex(p.x, p.y);
         endShape();
       }
 
       if (isDrawing) {
-        stroke(colors[selectedIndex]);
-        strokeWeight(6);
+        stroke(colors[selectedIndex]); strokeWeight(6);
         beginShape();
         for (let p of currentStroke) vertex(p.x, p.y);
         endShape();
@@ -92,21 +85,16 @@
     }
 
     function touchStarted() {
-      // 點擊調色盤偵測
       for (let i = 0; i < colors.length; i++) {
         let x = width / 2 - 125 + i * 50;
-        let d = dist(mouseX, mouseY, x, 45);
-        if (d < 25) {
-          selectedIndex = i; // 儲存選中的號碼
+        if (dist(mouseX, mouseY, x, 45) < 25) {
+          selectedIndex = i;
           return false;
         }
       }
-
-      // 點擊按鈕偵測
       if (mouseY > height - 70) {
-        if (mouseX > width/2 - 110 && mouseX < width/2 - 10) {
-          allStrokes = [];
-        } else if (mouseX > width/2 + 10 && mouseX < width/2 + 110) {
+        if (mouseX > width/2 - 110 && mouseX < width/2 - 10) allStrokes = [];
+        else if (mouseX > width/2 + 10 && mouseX < width/2 + 110) {
           if (allStrokes.length > 0) {
             fishRef.push({ strokes: allStrokes, timestamp: Date.now() });
             allStrokes = [];
@@ -115,8 +103,6 @@
         }
         return false;
       }
-
-      // 畫畫區域 (避開上下 UI)
       if (mouseY > 90 && mouseY < height - 90) {
         isDrawing = true;
         currentStroke = [];
@@ -125,9 +111,7 @@
     }
 
     function touchMoved() {
-      if (isDrawing) {
-        currentStroke.push({x: mouseX, y: mouseY});
-      }
+      if (isDrawing) currentStroke.push({x: mouseX, y: mouseY});
       return false;
     }
 
